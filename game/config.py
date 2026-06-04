@@ -32,7 +32,7 @@ BULLET_SPEED = 1.2            # 奥行き速度(d/秒)。1.2なら約0.83秒で�
 BULLET_DAMAGE = 1
 
 # --- アイテム ---
-ITEM_SPEED = 0.15             # アイテムの降下速度(d/秒)
+ITEM_SPEED = 0.05             # アイテムの降下速度(d/秒)
 PANEL_WIDTH = 140             # パネルの手前での表示幅(px)
 BOX_WIDTH = 140               # アイテムボックスの表示幅(px)
 PANEL_ADD_MIN = 1             # +n パネルの範囲
@@ -44,18 +44,17 @@ BOX_HP_MAX = 15
 BOX_ATTACK_BONUS = 1          # ボックス破壊時の攻撃力上昇
 BOX_PENALTY_DIV = 2           # 未破壊ボックス接触時に味方が 1/n になる
 
-# --- 出現割合(重み) ---
-SPAWN_WEIGHT_ENEMY = 0.66
-SPAWN_WEIGHT_PANEL_ADD = 0.12
-SPAWN_WEIGHT_PANEL_MUL = 0.08
-SPAWN_WEIGHT_BOX = 0.14
+# --- 出現間隔(種類ごとの平均、ミリ秒) ---
+SPAWN_INTERVAL_ENEMY_MS = 140
+SPAWN_INTERVAL_PANEL_ADD_MS = 7500
+SPAWN_INTERVAL_PANEL_MUL_MS = 34000
+SPAWN_INTERVAL_BOX_MS = 6500
+SPAWN_JITTER = 0.5            # 出現間隔のゆらぎ(0.5なら±50%)
 
 # --- 敵(雑魚1) ---
 ENEMY_WIDTH = 120             # 手前での表示幅(px)
-ENEMY_SPEED = 0.15            # 奥行き速度(d/秒)。0.15なら約6.7秒で手前に到達
+ENEMY_SPEED = 0.05            # 奥行き速度(d/秒)。0.05なら約20秒で手前に到達
 ENEMY_HP = 1
-ENEMY_SPAWN_INTERVAL_MS = 900 # 平均出現間隔(ミリ秒)
-ENEMY_SPAWN_JITTER = 0.5      # 出現間隔のゆらぎ(0.5なら±50%)
 
 # --- 当たり判定 ---
 HIT_DEPTH_RANGE = 0.04        # 弾と敵の奥行き一致とみなす範囲

@@ -249,32 +249,34 @@ class ItemBox(Item):
 
 # --- 出現管理 ---
 
+# 種類ごとの平均出現間隔(ミリ秒)
 SPAWN_TABLE = [
-    (Enemy, config.SPAWN_WEIGHT_ENEMY),
-    (PanelAdd, config.SPAWN_WEIGHT_PANEL_ADD),
-    (PanelMul, config.SPAWN_WEIGHT_PANEL_MUL),
-    (ItemBox, config.SPAWN_WEIGHT_BOX),
+    (Enemy, config.SPAWN_INTERVAL_ENEMY_MS),
+    (PanelAdd, config.SPAWN_INTERVAL_PANEL_ADD_MS),
+    (PanelMul, config.SPAWN_INTERVAL_PANEL_MUL_MS),
+    (ItemBox, config.SPAWN_INTERVAL_BOX_MS),
 ]
 
 
 class Spawner:
-    """敵とアイテムをランダムな間隔・横位置・種類で出現させる"""
+    """敵とアイテムを種類ごとに独立したタイマーで出現させる"""
 
     def __init__(self):
-        self.timer_ms = 0.0
-        self.next_interval_ms = self._roll_interval()
+        self.timers = {cls: 0.0 for cls, _ in SPAWN_TABLE}
+        self.next_intervals = {
+            cls: self._roll_interval(base) for cls, base in SPAWN_TABLE
+        }
 
-    def _roll_interval(self) -> float:
-        jitter = config.ENEMY_SPAWN_JITTER
-        return config.ENEMY_SPAWN_INTERVAL_MS * random.uniform(1 - jitter, 1 + jitter)
+    def _roll_interval(self, base_ms: float) -> float:
+        jitter = config.SPAWN_JITTER
+        return base_ms * random.uniform(1 - jitter, 1 + jitter)
 
-    def update(self, dt_ms: float) -> Entity | None:
-        self.timer_ms += dt_ms
-        if self.timer_ms >= self.next_interval_ms:
-            self.timer_ms = 0.0
-            self.next_interval_ms = self._roll_interval()
-            classes = [cls for cls, _ in SPAWN_TABLE]
-            weights = [w for _, w in SPAWN_TABLE]
-            cls = random.choices(classes, weights=weights)[0]
-            return cls(u=random.uniform(-config.U_LIMIT, config.U_LIMIT))
-        return None
+    def update(self, dt_ms: float) -> list[Entity]:
+        spawned: list[Entity] = []
+        for cls, base_ms in SPAWN_TABLE:
+            self.timers[cls] += dt_ms
+            if self.timers[cls] >= self.next_intervals[cls]:
+                self.timers[cls] = 0.0
+                self.next_intervals[cls] = self._roll_interval(base_ms)
+                spawned.append(cls(u=random.uniform(-config.U_LIMIT, config.U_LIMIT)))
+        return spawned

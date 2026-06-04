@@ -117,11 +117,11 @@ class Game:
             bullet.update(dt_ms)
 
         # 敵・アイテム: 出現と前進
-        spawned = self.spawner.update(dt_ms)
-        if isinstance(spawned, Enemy):
-            self.enemies.append(spawned)
-        elif isinstance(spawned, Item):
-            self.items.append(spawned)
+        for spawned in self.spawner.update(dt_ms):
+            if isinstance(spawned, Enemy):
+                self.enemies.append(spawned)
+            else:
+                self.items.append(spawned)
         for enemy in self.enemies:
             enemy.update(dt_ms)
             if enemy.reached_front():
@@ -211,6 +211,9 @@ class Game:
             f"攻撃力 {self.squad.attack_power}"
         )
         self.draw_text(text, (config.SCREEN_WIDTH // 2, 40))
+        # 性能確認用FPS(右上)
+        fps = f"FPS {self.clock.get_fps():.0f}"
+        self.draw_text(fps, (config.SCREEN_WIDTH - 90, 40), self.label_font)
 
     def draw_game_over(self) -> None:
         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
