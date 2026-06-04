@@ -2,11 +2,13 @@
 
 import pygame
 
-from . import assets, config
-from .entities import Bullet, Enemy, Item, ItemBox, Spawner, Squad
+from . import assets, config, stage
+from .entities import Bullet, Enemy, Item, ItemBox, Squad
 
 STATE_PLAYING = "playing"
 STATE_GAME_OVER = "game_over"
+STATE_STAGE_CLEAR = "stage_clear"
+STATE_ALL_CLEAR = "all_clear"
 
 
 class Game:
@@ -41,13 +43,20 @@ class Game:
         self.reset()
 
     def reset(self) -> None:
-        self.state = STATE_PLAYING
+        """最初から開始(味方・スコアも初期化)"""
         self.squad = Squad()
+        self.score = 0
+        self.start_stage(config.STAGE_FIRST)
+
+    def start_stage(self, number: int) -> None:
+        """指定ステージを開始。味方人数は持ち越し、攻撃力はリセット"""
+        self.state = STATE_PLAYING
+        self.stage = stage.StageManager(number)
+        self.squad.attack_power = 1
         self.bullets: list[Bullet] = []
         self.enemies: list[Enemy] = []
         self.items: list[Item] = []
-        self.spawner = Spawner()
-        self.score = 0
+        self.clear_timer_ms = 0.0
 
     # --- ウィンドウスケーリング ---
 
@@ -75,6 +84,8 @@ class Game:
             running = self.handle_events()
             if self.state == STATE_PLAYING:
                 self.update(dt_ms)
+            elif self.state == STATE_STAGE_CLEAR:
+                self.update_stage_clear(dt_ms)
             self.draw()
             # 論理画面をウィンドウサイズに拡縮して表示
             self.window.fill((0, 0, 0))
@@ -95,9 +106,11 @@ class Game:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     return False
-                if event.key == pygame.K_r and self.state == STATE_GAME_OVER:
+                if event.key == pygame.K_r and self.state in (STATE_GAME_OVER, STATE_ALL_CLEAR):
                     self.reset()
-            if event.type == pygame.MOUSEBUTTONDOWN and self.state == STATE_GAME_OVER:
+            if event.type == pygame.MOUSEBUTTONDOWN and self.state in (
+                STATE_GAME_OVER, STATE_ALL_CLEAR
+            ):
                 self.reset()
             if event.type == pygame.VIDEORESIZE:
                 self.window = pygame.display.set_mode(event.size, pygame.RESIZABLE)
@@ -116,8 +129,8 @@ class Game:
         for bullet in self.bullets:
             bullet.update(dt_ms)
 
-        # 敵・アイテム: 出現と前進
-        for spawned in self.spawner.update(dt_ms):
+        # 敵・アイテム: ステージ進行に応じて出現、前進
+        for spawned in self.stage.update(dt_ms):
             if isinstance(spawned, Enemy):
                 self.enemies.append(spawned)
             else:
@@ -137,6 +150,21 @@ class Game:
         self.bullets = [b for b in self.bullets if b.alive]
         self.enemies = [e for e in self.enemies if e.alive]
         self.items = [i for i in self.items if i.alive]
+
+        # ステージクリア判定: 全イベント発生済み+猶予進行+敵全滅
+        if self.stage.reached_end() and not self.enemies:
+            self.state = STATE_STAGE_CLEAR
+            self.clear_timer_ms = 0.0
+
+    def update_stage_clear(self, dt_ms: float) -> None:
+        """「STAGE CLEAR」表示後、次ステージへ(無ければ全クリア)"""
+        self.clear_timer_ms += dt_ms
+        if self.clear_timer_ms >= config.STAGE_CLEAR_WAIT_MS:
+            next_number = self.stage.number + 1
+            if stage.stage_exists(next_number):
+                self.start_stage(next_number)
+            else:
+                self.state = STATE_ALL_CLEAR
 
     def resolve_bullet_hits(self) -> None:
         """弾 vs 敵・アイテムボックス(パネルは弾が素通りする)"""
@@ -187,14 +215,19 @@ class Game:
             entity.draw(self.screen)
         self.squad.draw(self.screen)
 
-        # アイテムの数値ラベル(+n / ×n / ボックス耐久)
-        for item in self.items:
-            rect = item.screen_rect()
-            self.draw_text(item.label(), rect.center, self.label_font)
+        # 数値ラベル(アイテムの+n/×n/耐久、ボスの残り耐久)
+        for obj in [*self.items, *self.enemies]:
+            if hasattr(obj, "label") and obj.d <= 1.0:
+                rect = obj.screen_rect()
+                self.draw_text(obj.label(), rect.center, self.label_font)
 
         self.draw_hud()
         if self.state == STATE_GAME_OVER:
             self.draw_game_over()
+        elif self.state == STATE_STAGE_CLEAR:
+            self.draw_center_message(f"STAGE {self.stage.number} CLEAR!")
+        elif self.state == STATE_ALL_CLEAR:
+            self.draw_center_message("ALL CLEAR!", "クリック / Rキー で最初から")
 
     def draw_text(self, text: str, center: tuple[int, int], font=None) -> None:
         font = font or self.font
@@ -206,20 +239,25 @@ class Game:
 
     def draw_hud(self) -> None:
         text = (
+            f"STAGE {self.stage.number}   "
             f"SCORE {self.score}   "
             f"味方 {self.squad.count}   "
             f"攻撃力 {self.squad.attack_power}"
         )
         self.draw_text(text, (config.SCREEN_WIDTH // 2, 40))
-        # 性能確認用FPS(右上)
+        # 性能確認用FPS(右上、HUD本体と重ならない位置)
         fps = f"FPS {self.clock.get_fps():.0f}"
-        self.draw_text(fps, (config.SCREEN_WIDTH - 90, 40), self.label_font)
+        self.draw_text(fps, (config.SCREEN_WIDTH - 90, 100), self.label_font)
 
     def draw_game_over(self) -> None:
+        self.draw_center_message("GAME OVER", "クリック / Rキー でリスタート")
+
+    def draw_center_message(self, title: str, subtitle: str = "") -> None:
         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 150))
         self.screen.blit(overlay, (0, 0))
         cx = config.SCREEN_WIDTH // 2
         cy = config.SCREEN_HEIGHT // 2
-        self.draw_text("GAME OVER", (cx, cy - 60), self.big_font)
-        self.draw_text("クリック / Rキー でリスタート", (cx, cy + 60))
+        self.draw_text(title, (cx, cy - 60), self.big_font)
+        if subtitle:
+            self.draw_text(subtitle, (cx, cy + 60))

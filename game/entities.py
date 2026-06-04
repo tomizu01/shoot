@@ -26,6 +26,8 @@ class Entity:
         return rect
 
     def draw(self, surface: pygame.Surface) -> None:
+        if self.d > 1.0:  # まだ画面奥に入っていない(隊列の後続など)
+            return
         img = assets.get_scaled(self.image_key, self.base_width * projection.scale(self.d))
         x, y = projection.to_screen(self.u, self.d)
         surface.blit(img, img.get_rect(midbottom=(round(x), round(y))))
@@ -94,6 +96,11 @@ class Squad:
                 left_px -= w
             placements.append((size, center_px))
 
+        # 交互配置は偶数個で左右非対称になるため、隊列の中点を0に補正する
+        # (左右どちらに寄せても端のユニットが同じだけ壁に近づけるように)
+        mid_px = (left_px + right_px) / 2
+        placements = [(size, px - mid_px) for size, px in placements]
+
         # 部隊全体の幅を画面横幅の一定割合に制限。超える場合は間隔を詰めて重ねる
         span_px = right_px - left_px
         max_px = config.SCREEN_WIDTH * config.SQUAD_MAX_WIDTH_RATIO
@@ -159,15 +166,20 @@ class Bullet(Entity):
 
 
 class Enemy(Entity):
+    """雑魚。ボスはこれを継承する"""
+
     image_key = "enemy1"
     base_width = config.ENEMY_WIDTH
+    speed = config.ENEMY_SPEED
 
-    def __init__(self, u: float):
-        super().__init__(u, d=1.0)
-        self.hp = config.ENEMY_HP
+    def __init__(self, u: float, d: float = 1.0, hp: int = config.ENEMY_HP):
+        super().__init__(u, d)
+        self.hp = hp
 
     def update(self, dt_ms: float) -> None:
-        self.d -= config.ENEMY_SPEED * projection.depth_speed_factor(self.d) * dt_ms / 1000
+        # 画面奥(d>1)にいる間は遠近補正をかけずに進める
+        factor = projection.depth_speed_factor(self.d) if self.d <= 1.0 else 1.0
+        self.d -= self.speed * factor * dt_ms / 1000
 
     def reached_front(self) -> bool:
         """画面最下部(手前端)に到達したか → ゲームオーバー判定"""
@@ -177,6 +189,28 @@ class Enemy(Entity):
         self.hp -= damage
         if self.hp <= 0:
             self.alive = False
+
+
+class MidBoss(Enemy):
+    """中ボス(e2)。耐久はステージCSVで指定、残り耐久を表示する"""
+
+    image_key = "enemy2"
+    base_width = config.ENEMY2_WIDTH
+    speed = config.ENEMY2_SPEED
+
+    def label(self) -> str:
+        return str(self.hp)
+
+
+class BigBoss(Enemy):
+    """大ボス(e3)。耐久はステージCSVで指定、残り耐久を表示する"""
+
+    image_key = "enemy3"
+    base_width = config.ENEMY3_WIDTH
+    speed = config.ENEMY3_SPEED
+
+    def label(self) -> str:
+        return str(self.hp)
 
 
 # --- アイテム ---
@@ -203,9 +237,11 @@ class PanelAdd(Item):
     image_key = "powerup1"
     base_width = config.PANEL_WIDTH
 
-    def __init__(self, u: float):
+    def __init__(self, u: float, n: int | None = None):
         super().__init__(u)
-        self.n = random.randint(config.PANEL_ADD_MIN, config.PANEL_ADD_MAX)
+        self.n = n if n is not None else random.randint(
+            config.PANEL_ADD_MIN, config.PANEL_ADD_MAX
+        )
 
     def label(self) -> str:
         return f"+{self.n}"
@@ -220,9 +256,11 @@ class PanelMul(Item):
     image_key = "powerup2"
     base_width = config.PANEL_WIDTH
 
-    def __init__(self, u: float):
+    def __init__(self, u: float, n: int | None = None):
         super().__init__(u)
-        self.n = random.randint(config.PANEL_MUL_MIN, config.PANEL_MUL_MAX)
+        self.n = n if n is not None else random.randint(
+            config.PANEL_MUL_MIN, config.PANEL_MUL_MAX
+        )
 
     def label(self) -> str:
         return f"×{self.n}"
@@ -237,9 +275,11 @@ class ItemBox(Item):
     image_key = "powerup3"
     base_width = config.BOX_WIDTH
 
-    def __init__(self, u: float):
+    def __init__(self, u: float, hp: int | None = None):
         super().__init__(u)
-        self.hp = random.randint(config.BOX_HP_MIN, config.BOX_HP_MAX)
+        self.hp = hp if hp is not None else random.randint(
+            config.BOX_HP_MIN, config.BOX_HP_MAX
+        )
 
     def label(self) -> str:
         return str(self.hp)
@@ -257,36 +297,5 @@ class ItemBox(Item):
         squad.set_count(squad.count // config.BOX_PENALTY_DIV)
 
 
-# --- 出現管理 ---
-
-# 種類ごとの平均出現間隔(ミリ秒)
-SPAWN_TABLE = [
-    (Enemy, config.SPAWN_INTERVAL_ENEMY_MS),
-    (PanelAdd, config.SPAWN_INTERVAL_PANEL_ADD_MS),
-    (PanelMul, config.SPAWN_INTERVAL_PANEL_MUL_MS),
-    (ItemBox, config.SPAWN_INTERVAL_BOX_MS),
-]
-
-
-class Spawner:
-    """敵とアイテムを種類ごとに独立したタイマーで出現させる"""
-
-    def __init__(self):
-        self.timers = {cls: 0.0 for cls, _ in SPAWN_TABLE}
-        self.next_intervals = {
-            cls: self._roll_interval(base) for cls, base in SPAWN_TABLE
-        }
-
-    def _roll_interval(self, base_ms: float) -> float:
-        jitter = config.SPAWN_JITTER
-        return base_ms * random.uniform(1 - jitter, 1 + jitter)
-
-    def update(self, dt_ms: float) -> list[Entity]:
-        spawned: list[Entity] = []
-        for cls, base_ms in SPAWN_TABLE:
-            self.timers[cls] += dt_ms
-            if self.timers[cls] >= self.next_intervals[cls]:
-                self.timers[cls] = 0.0
-                self.next_intervals[cls] = self._roll_interval(base_ms)
-                spawned.append(cls(u=random.uniform(-config.U_LIMIT, config.U_LIMIT)))
-        return spawned
+# 出現管理はステージCSV駆動(game/stage.py)に移行した。
+# ランダム出現が必要になったら git履歴の Spawner クラスを参照。

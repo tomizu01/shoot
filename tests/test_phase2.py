@@ -36,6 +36,16 @@ def main():
         assert span <= limit + 1, (n, span, limit)
     print("OK: 部隊幅は画面の1/4以内")
 
+    # --- 隊列は左右対称で、左に寄せれば左端ユニットがU_LIMITまで届く ---
+    for n in (2, 4, 7, 30):
+        game.squad.set_count(n)
+        offsets = [u.u_offset for u in game.squad.units]
+        assert abs(max(offsets) + min(offsets)) < 1e-6, (n, offsets)
+        # 部隊中心を左端まで寄せたとき、左端ユニットは±U_LIMITの端に到達できる
+        leftmost = -game.squad.center_limit + min(offsets)
+        assert abs(leftmost - (-config.U_LIMIT)) < 1e-6, (n, leftmost)
+    print("OK: 隊列は左右対称・端まで届く")
+
     # --- +n パネル取得 ---
     game.reset()
     panel = PanelAdd(u=game.squad.center_u)

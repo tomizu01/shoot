@@ -47,17 +47,26 @@ BOX_HP_MAX = 15
 BOX_ATTACK_BONUS = 1          # ボックス破壊時の攻撃力上昇
 BOX_PENALTY_DIV = 2           # 未破壊ボックス接触時に味方が 1/n になる
 
-# --- 出現間隔(種類ごとの平均、ミリ秒) ---
-SPAWN_INTERVAL_ENEMY_MS = 140
-SPAWN_INTERVAL_PANEL_ADD_MS = 7500
-SPAWN_INTERVAL_PANEL_MUL_MS = 34000
-SPAWN_INTERVAL_BOX_MS = 6500
-SPAWN_JITTER = 0.5            # 出現間隔のゆらぎ(0.5なら±50%)
+# --- ステージ ---
+STAGE_DIR = "stages"            # ステージCSVの場所(stage1.csv, stage2.csv, ...)
+STAGE_FIRST = 1                 # 開始ステージ番号
+STAGE_PROGRESS_PER_SEC = 100    # 進行距離/秒(CSVの登場タイミングの基準)
+STAGE_CLEAR_BUFFER = 300        # 最終イベント後、クリア判定を始めるまでの進行距離
+STAGE_CLEAR_WAIT_MS = 2500      # 「STAGE CLEAR」表示の時間
+LANE_U = {1: -0.75, 2: -0.25, 3: 0.25, 4: 0.75}  # レーン番号 → 横位置u
+ZAKO_CLUSTER_JITTER_U = 0.15    # e1複数体の横ばらつき(レーン内)
+ZAKO_CLUSTER_STEP_D = 0.04      # e1複数体の奥行きずらし(隊列で降りてくる)
 
 # --- 敵(雑魚1) ---
 ENEMY_WIDTH = 120             # 手前での表示幅(px)
 ENEMY_SPEED = 0.05            # 奥行き速度(d/秒)。0.05なら約20秒で手前に到達
 ENEMY_HP = 1
+
+# --- 中ボス(e2)/大ボス(e3) 耐久はステージCSVで指定 ---
+ENEMY2_WIDTH = 220
+ENEMY2_SPEED = 0.035
+ENEMY3_WIDTH = 340
+ENEMY3_SPEED = 0.025
 
 # --- 当たり判定 ---
 HIT_DEPTH_RANGE = 0.04        # 弾と敵の奥行き一致とみなす範囲
