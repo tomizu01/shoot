@@ -15,15 +15,40 @@ CORRIDOR_Y_FRONT = 1448       # 手前端の画面y座標
 CORRIDOR_Y_BACK = 60          # 奥端の画面y座標
 U_LIMIT = 0.85                # 壁にめり込まないための横移動制限
 
-# --- プレイヤー ---
-PLAYER_WIDTH = 100            # 手前(d=0)での表示幅(px)
+# --- プレイヤー(味方部隊) ---
+PLAYER_WIDTH = 100            # 1人ユニットの手前(d=0)での表示幅(px)
+PLAYER_WIDTH_X10 = 135        # 10人ユニットの表示幅(少し拡大)
+PLAYER_WIDTH_X100 = 175       # 100人ユニットの表示幅(さらに拡大)
 PLAYER_DEPTH = 0.02           # プレイヤーの立ち位置(奥行き)
 FIRE_INTERVAL_MS = 250        # 発射間隔(ミリ秒)
+SQUAD_MAX = 1000              # 味方の最大人数
+UNIT_OVERLAP = 0.6            # 横並びの詰め具合(1.0=密着、小さいほど重なる)
 
 # --- 弾 ---
 BULLET_WIDTH = 26             # 手前での表示幅(px)
+BULLET_WIDTH_X10 = 40         # 10人ユニットの弾の表示幅
+BULLET_WIDTH_X100 = 56        # 100人ユニットの弾の表示幅
 BULLET_SPEED = 1.2            # 奥行き速度(d/秒)。1.2なら約0.83秒で奥に到達
 BULLET_DAMAGE = 1
+
+# --- アイテム ---
+ITEM_SPEED = 0.15             # アイテムの降下速度(d/秒)
+PANEL_WIDTH = 140             # パネルの手前での表示幅(px)
+BOX_WIDTH = 140               # アイテムボックスの表示幅(px)
+PANEL_ADD_MIN = 1             # +n パネルの範囲
+PANEL_ADD_MAX = 10
+PANEL_MUL_MIN = 2             # ×n パネルの範囲
+PANEL_MUL_MAX = 5
+BOX_HP_MIN = 5                # ボックスの耐久範囲
+BOX_HP_MAX = 15
+BOX_ATTACK_BONUS = 1          # ボックス破壊時の攻撃力上昇
+BOX_PENALTY_DIV = 2           # 未破壊ボックス接触時に味方が 1/n になる
+
+# --- 出現割合(重み) ---
+SPAWN_WEIGHT_ENEMY = 0.66
+SPAWN_WEIGHT_PANEL_ADD = 0.12
+SPAWN_WEIGHT_PANEL_MUL = 0.08
+SPAWN_WEIGHT_BOX = 0.14
 
 # --- 敵(雑魚1) ---
 ENEMY_WIDTH = 120             # 手前での表示幅(px)

@@ -3,7 +3,7 @@
 import pygame
 
 from . import assets, config
-from .entities import Bullet, Enemy, EnemySpawner, Player
+from .entities import Bullet, Enemy, Item, ItemBox, Spawner, Squad
 
 STATE_PLAYING = "playing"
 STATE_GAME_OVER = "game_over"
@@ -35,16 +35,18 @@ class Game:
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont("meiryo", config.HUD_FONT_SIZE, bold=True)
         self.big_font = pygame.font.SysFont("meiryo", config.HUD_FONT_SIZE * 2, bold=True)
+        self.label_font = pygame.font.SysFont("meiryo", 36, bold=True)
         self.smoke_frames = smoke_frames  # 動作確認用: 指定フレーム数で自動終了
 
         self.reset()
 
     def reset(self) -> None:
         self.state = STATE_PLAYING
-        self.player = Player()
+        self.squad = Squad()
         self.bullets: list[Bullet] = []
         self.enemies: list[Enemy] = []
-        self.spawner = EnemySpawner()
+        self.items: list[Item] = []
+        self.spawner = Spawner()
         self.score = 0
 
     # --- ウィンドウスケーリング ---
@@ -107,46 +109,70 @@ class Game:
     def update(self, dt_ms: float) -> None:
         mouse_x = self.mouse_logical_x()
 
-        # プレイヤー: マウス追随 + 自動発射
-        if self.player.update(dt_ms, mouse_x):
-            self.bullets.append(Bullet(self.player.u, self.player.d))
+        # 味方部隊: マウス追随 + 一斉射撃
+        self.bullets.extend(self.squad.update(dt_ms, mouse_x))
 
         # 弾
         for bullet in self.bullets:
             bullet.update(dt_ms)
 
-        # 敵: 出現と前進
+        # 敵・アイテム: 出現と前進
         spawned = self.spawner.update(dt_ms)
-        if spawned:
+        if isinstance(spawned, Enemy):
             self.enemies.append(spawned)
+        elif isinstance(spawned, Item):
+            self.items.append(spawned)
         for enemy in self.enemies:
             enemy.update(dt_ms)
             if enemy.reached_front():
                 self.state = STATE_GAME_OVER
                 return
+        for item in self.items:
+            item.update(dt_ms)
 
-        # 弾と敵の当たり判定
-        self.resolve_hits()
+        # 当たり判定
+        self.resolve_bullet_hits()
+        self.resolve_item_pickups()
 
         self.bullets = [b for b in self.bullets if b.alive]
         self.enemies = [e for e in self.enemies if e.alive]
+        self.items = [i for i in self.items if i.alive]
 
-    def resolve_hits(self) -> None:
+    def resolve_bullet_hits(self) -> None:
+        """弾 vs 敵・アイテムボックス(パネルは弾が素通りする)"""
+        boxes = [i for i in self.items if isinstance(i, ItemBox)]
         for bullet in self.bullets:
             if not bullet.alive:
                 continue
-            for enemy in self.enemies:
-                if not enemy.alive:
+            for target in [*self.enemies, *boxes]:
+                if not target.alive:
                     continue
                 # 奥行きがほぼ一致し、画面上の矩形が重なれば命中
-                if abs(bullet.d - enemy.d) > config.HIT_DEPTH_RANGE:
+                if abs(bullet.d - target.d) > config.HIT_DEPTH_RANGE:
                     continue
-                if bullet.screen_rect().colliderect(enemy.screen_rect()):
-                    enemy.hit(bullet.damage)
+                if bullet.screen_rect().colliderect(target.screen_rect()):
                     bullet.alive = False
-                    if not enemy.alive:
-                        self.score += 1
+                    if isinstance(target, Enemy):
+                        target.hit(bullet.damage)
+                        if not target.alive:
+                            self.score += 1
+                    elif target.hit(bullet.damage):  # ItemBox 破壊
+                        self.squad.attack_power += config.BOX_ATTACK_BONUS
                     break
+
+    def resolve_item_pickups(self) -> None:
+        """味方の列に到達したアイテムと味方ユニットの接触判定"""
+        unit_rects = [unit.screen_rect() for unit in self.squad.units]
+        for item in self.items:
+            if not item.alive:
+                continue
+            # 味方の奥行きまで降りてきたものだけ判定
+            if item.d > self.squad.d + config.HIT_DEPTH_RANGE:
+                continue
+            item_rect = item.screen_rect()
+            if any(item_rect.colliderect(r) for r in unit_rects):
+                item.apply(self.squad)  # パネル=増加 / 未破壊ボックス=半減
+                item.alive = False
 
     # --- 描画 ---
 
@@ -155,11 +181,16 @@ class Game:
 
         # 奥のものから順に描く(手前のスプライトが上に重なる)
         drawables = sorted(
-            [*self.enemies, *self.bullets], key=lambda e: e.d, reverse=True
+            [*self.enemies, *self.items, *self.bullets], key=lambda e: e.d, reverse=True
         )
         for entity in drawables:
             entity.draw(self.screen)
-        self.player.draw(self.screen)
+        self.squad.draw(self.screen)
+
+        # アイテムの数値ラベル(+n / ×n / ボックス耐久)
+        for item in self.items:
+            rect = item.screen_rect()
+            self.draw_text(item.label(), rect.center, self.label_font)
 
         self.draw_hud()
         if self.state == STATE_GAME_OVER:
@@ -174,7 +205,12 @@ class Game:
         self.screen.blit(surface, rect)
 
     def draw_hud(self) -> None:
-        self.draw_text(f"SCORE {self.score}", (config.SCREEN_WIDTH // 2, 40))
+        text = (
+            f"SCORE {self.score}   "
+            f"味方 {self.squad.count}   "
+            f"攻撃力 {self.squad.attack_power}"
+        )
+        self.draw_text(text, (config.SCREEN_WIDTH // 2, 40))
 
     def draw_game_over(self) -> None:
         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
