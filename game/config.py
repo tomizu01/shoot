@@ -14,6 +14,8 @@ CORRIDOR_WIDTH_BACK = 300     # 奥の通路幅(px)
 CORRIDOR_Y_FRONT = 1448       # 手前端の画面y座標
 CORRIDOR_Y_BACK = 60          # 奥端の画面y座標
 U_LIMIT = 0.85                # 壁にめり込まないための横移動制限
+DEPTH_SPEED_GAMMA = 2.0       # 手前加速の強さ(1.0=弱い、上げるほど手前で加速)
+DEPTH_SPEED_REF_D = 0.65      # 速度基準の奥行き(γ変更時のトータル所要時間調整用)
 
 # --- プレイヤー(味方部隊) ---
 PLAYER_WIDTH = 100            # 1人ユニットの手前(d=0)での表示幅(px)

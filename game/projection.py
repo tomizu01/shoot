@@ -21,11 +21,13 @@ def scale(d: float) -> float:
 def depth_speed_factor(d: float) -> float:
     """遠近感に合わせた奥行き速度の補正係数。
 
-    スプライトの見た目の大きさ(scale)に比例して画面上の移動速度を変えることで、
-    「手前に来るほど加速して見える」遠近の自然な動きになる。
-    d=0.5を基準(1.0)にしているので、奥→手前のトータル所要時間は補正前とほぼ同じ。
+    スプライトの見た目の大きさ(scale)の比のγ乗で画面上の移動速度を変えることで、
+    「手前に来るほど加速して見える」遠近の動きになる。
+    γ(DEPTH_SPEED_GAMMA)を上げるほど手前の加速が強くなる。
+    基準点(DEPTH_SPEED_REF_D)は奥→手前のトータル所要時間が
+    補正なしの場合とほぼ同じになるよう調整してある。
     """
-    return scale(d) / scale(0.5)
+    return (scale(d) / scale(config.DEPTH_SPEED_REF_D)) ** config.DEPTH_SPEED_GAMMA
 
 
 def to_screen(u: float, d: float) -> tuple[float, float]:
