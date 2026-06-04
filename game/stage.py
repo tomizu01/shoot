@@ -6,6 +6,7 @@
 import csv
 import os
 import random
+import re
 
 from . import config
 from .entities import BigBoss, Enemy, Entity, ItemBox, MidBoss, PanelAdd, PanelMul
@@ -25,6 +26,16 @@ def stage_path(number: int) -> str:
 
 def stage_exists(number: int) -> bool:
     return os.path.isfile(stage_path(number))
+
+
+def list_stages() -> list[int]:
+    """stagesフォルダに存在するステージ番号一覧(昇順)"""
+    numbers = []
+    for name in os.listdir(STAGE_DIR):
+        m = re.fullmatch(r"stage(\d+)\.csv", name)
+        if m:
+            numbers.append(int(m.group(1)))
+    return sorted(numbers)
 
 
 def load_events(number: int) -> list[tuple[int, int, str, int]]:

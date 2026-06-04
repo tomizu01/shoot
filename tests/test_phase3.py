@@ -9,7 +9,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from game import config, stage  # noqa: E402
 from game.entities import BigBoss, Enemy, MidBoss, PanelAdd, PanelMul, ItemBox  # noqa: E402
-from game.game import Game, STATE_ALL_CLEAR, STATE_STAGE_CLEAR  # noqa: E402
+from game.game import (  # noqa: E402
+    Game,
+    STATE_ALL_CLEAR,
+    STATE_PLAYING,
+    STATE_STAGE_CLEAR,
+    STATE_STAGE_SELECT,
+)
 
 
 def main():
@@ -76,11 +82,33 @@ def main():
     assert game.squad.count == 50 and game.squad.attack_power == 1
     print("OK: ステージ開始で攻撃力リセット・人数持ち越し")
 
-    # --- 全クリア: stage2.csvが無いので STAGE_CLEAR → ALL_CLEAR ---
+    # --- ステージクリア → 次ステージへ ---
+    game.start_stage(1)
+    game.state = STATE_STAGE_CLEAR
+    game.update_stage_clear(dt_ms=config.STAGE_CLEAR_WAIT_MS + 1)
+    assert game.state == STATE_PLAYING and game.stage.number == 2
+    print("OK: ステージ1クリアでステージ2へ")
+
+    # --- 全クリア: 最終ステージの次が無ければ ALL_CLEAR ---
+    last = stage.list_stages()[-1]
+    game.start_stage(last)
     game.state = STATE_STAGE_CLEAR
     game.update_stage_clear(dt_ms=config.STAGE_CLEAR_WAIT_MS + 1)
     assert game.state == STATE_ALL_CLEAR, game.state
-    print("OK: 次ステージが無ければALL CLEAR")
+    print("OK: 最終ステージクリアでALL CLEAR")
+
+    # --- ステージ選択画面 ---
+    assert stage.list_stages() == list(range(1, 11)), stage.list_stages()
+    game2 = Game()  # 通常起動(smoke指定なし)は選択画面から
+    assert game2.state == STATE_STAGE_SELECT
+    assert len(game2.select_buttons) == 10
+    # ボタンクリック相当: ステージ3で新規開始(人数・スコア初期化)
+    game2.squad.set_count(500)
+    game2.score = 99
+    game2.start_run(3)
+    assert game2.state == STATE_PLAYING and game2.stage.number == 3
+    assert game2.squad.count == 1 and game2.score == 0
+    print("OK: ステージ選択画面(10ステージ・新規開始で初期化)")
 
     print("\n全テスト成功")
 

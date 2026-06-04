@@ -5,6 +5,7 @@ import pygame
 from . import assets, config, stage
 from .entities import Bullet, Enemy, Item, ItemBox, Squad
 
+STATE_STAGE_SELECT = "stage_select"
 STATE_PLAYING = "playing"
 STATE_GAME_OVER = "game_over"
 STATE_STAGE_CLEAR = "stage_clear"
@@ -40,13 +41,38 @@ class Game:
         self.label_font = pygame.font.SysFont("meiryo", 36, bold=True)
         self.smoke_frames = smoke_frames  # 動作確認用: 指定フレーム数で自動終了
 
-        self.reset()
+        self.select_buttons = self._build_select_buttons()
+        self.start_run(config.STAGE_FIRST)  # ゲーム用属性の初期化を兼ねる
+        if not smoke_frames:
+            self.goto_stage_select()  # 通常起動はステージ選択画面から
 
-    def reset(self) -> None:
-        """最初から開始(味方・スコアも初期化)"""
+    # --- ステージ選択 ---
+
+    def _build_select_buttons(self) -> list[tuple[pygame.Rect, int]]:
+        """存在するステージのボタンを2列グリッドで配置(論理座標)"""
+        numbers = stage.list_stages()
+        cols = 2
+        bw, bh, gap = 380, 110, 40
+        grid_w = cols * bw + (cols - 1) * gap
+        x0 = (config.SCREEN_WIDTH - grid_w) // 2
+        y0 = 420
+        buttons = []
+        for i, n in enumerate(numbers):
+            col, row = i % cols, i // cols
+            rect = pygame.Rect(x0 + col * (bw + gap), y0 + row * (bh + gap), bw, bh)
+            buttons.append((rect, n))
+        return buttons
+
+    def goto_stage_select(self) -> None:
+        self.state = STATE_STAGE_SELECT
+        pygame.mouse.set_visible(True)
+
+    def start_run(self, number: int) -> None:
+        """選択したステージから新規プレイ開始(味方・スコア初期化)"""
         self.squad = Squad()
         self.score = 0
-        self.start_stage(config.STAGE_FIRST)
+        self.start_stage(number)
+        pygame.mouse.set_visible(False)
 
     def start_stage(self, number: int) -> None:
         """指定ステージを開始。味方人数は持ち越し、攻撃力はリセット"""
@@ -69,10 +95,16 @@ class Game:
         self.view_offset = ((win_w - view_w) // 2, (win_h - view_h) // 2)
         self.view_size = (view_w, view_h)
 
+    def to_logical_pos(self, window_pos: tuple[int, int]) -> tuple[float, float]:
+        """ウィンドウ座標 → 論理画面座標"""
+        return (
+            (window_pos[0] - self.view_offset[0]) / self.view_scale,
+            (window_pos[1] - self.view_offset[1]) / self.view_scale,
+        )
+
     def mouse_logical_x(self) -> float:
         """ウィンドウ上のマウスx座標 → 論理画面のx座標"""
-        mx, _ = pygame.mouse.get_pos()
-        return (mx - self.view_offset[0]) / self.view_scale
+        return self.to_logical_pos(pygame.mouse.get_pos())[0]
 
     # --- メインループ ---
 
@@ -107,11 +139,16 @@ class Game:
                 if event.key == pygame.K_ESCAPE:
                     return False
                 if event.key == pygame.K_r and self.state in (STATE_GAME_OVER, STATE_ALL_CLEAR):
-                    self.reset()
-            if event.type == pygame.MOUSEBUTTONDOWN and self.state in (
-                STATE_GAME_OVER, STATE_ALL_CLEAR
-            ):
-                self.reset()
+                    self.goto_stage_select()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if self.state in (STATE_GAME_OVER, STATE_ALL_CLEAR):
+                    self.goto_stage_select()
+                elif self.state == STATE_STAGE_SELECT:
+                    pos = self.to_logical_pos(event.pos)
+                    for rect, number in self.select_buttons:
+                        if rect.collidepoint(pos):
+                            self.start_run(number)
+                            break
             if event.type == pygame.VIDEORESIZE:
                 self.window = pygame.display.set_mode(event.size, pygame.RESIZABLE)
                 self._update_viewport()
@@ -207,6 +244,10 @@ class Game:
     def draw(self) -> None:
         self.screen.blit(assets.get("bg"), (0, 0))
 
+        if self.state == STATE_STAGE_SELECT:
+            self.draw_stage_select()
+            return
+
         # 奥のものから順に描く(手前のスプライトが上に重なる)
         drawables = sorted(
             [*self.enemies, *self.items, *self.bullets], key=lambda e: e.d, reverse=True
@@ -227,7 +268,7 @@ class Game:
         elif self.state == STATE_STAGE_CLEAR:
             self.draw_center_message(f"STAGE {self.stage.number} CLEAR!")
         elif self.state == STATE_ALL_CLEAR:
-            self.draw_center_message("ALL CLEAR!", "クリック / Rキー で最初から")
+            self.draw_center_message("ALL CLEAR!", "クリック / Rキー でステージ選択へ")
 
     def draw_text(self, text: str, center: tuple[int, int], font=None) -> None:
         font = font or self.font
@@ -249,8 +290,24 @@ class Game:
         fps = f"FPS {self.clock.get_fps():.0f}"
         self.draw_text(fps, (config.SCREEN_WIDTH - 90, 100), self.label_font)
 
+    def draw_stage_select(self) -> None:
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 30, 170))
+        self.screen.blit(overlay, (0, 0))
+        cx = config.SCREEN_WIDTH // 2
+        self.draw_text("STAGE SELECT", (cx, 240), self.big_font)
+        self.draw_text("ステージを選んでください", (cx, 340))
+
+        mouse_pos = self.to_logical_pos(pygame.mouse.get_pos())
+        for rect, number in self.select_buttons:
+            hover = rect.collidepoint(mouse_pos)
+            fill = (90, 110, 160) if hover else (40, 50, 80)
+            pygame.draw.rect(self.screen, fill, rect, border_radius=16)
+            pygame.draw.rect(self.screen, (200, 210, 230), rect, width=3, border_radius=16)
+            self.draw_text(f"STAGE {number}", rect.center)
+
     def draw_game_over(self) -> None:
-        self.draw_center_message("GAME OVER", "クリック / Rキー でリスタート")
+        self.draw_center_message("GAME OVER", "クリック / Rキー でステージ選択へ")
 
     def draw_center_message(self, title: str, subtitle: str = "") -> None:
         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)

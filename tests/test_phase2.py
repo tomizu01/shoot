@@ -1,4 +1,4 @@
-# 初期実装2のロジック確認(ヘッドレス実行可)
+﻿# 初期実装2のロジック確認(ヘッドレス実行可)
 # 実行: python tests/test_phase2.py
 
 import os
@@ -47,7 +47,7 @@ def main():
     print("OK: 隊列は左右対称・端まで届く")
 
     # --- +n パネル取得 ---
-    game.reset()
+    game.start_run(1)
     panel = PanelAdd(u=game.squad.center_u)
     panel.d = game.squad.d
     panel.n = 7
@@ -76,7 +76,7 @@ def main():
     print("OK: ボックス接触で 100 -> 50")
 
     # --- ボックスを弾で破壊して攻撃力+1 ---
-    game.reset()
+    game.start_run(1)
     box = ItemBox(u=0.0)
     box.d = 0.5
     box.hp = 5
