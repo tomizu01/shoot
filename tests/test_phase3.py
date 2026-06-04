@@ -11,7 +11,6 @@ from game import config, stage  # noqa: E402
 from game.entities import BigBoss, Enemy, MidBoss, PanelAdd, PanelMul, ItemBox  # noqa: E402
 from game.game import (  # noqa: E402
     Game,
-    STATE_ALL_CLEAR,
     STATE_PLAYING,
     STATE_STAGE_CLEAR,
     STATE_STAGE_SELECT,
@@ -82,20 +81,12 @@ def main():
     assert game.squad.count == 50 and game.squad.attack_power == 1
     print("OK: ステージ開始で攻撃力リセット・人数持ち越し")
 
-    # --- ステージクリア → 次ステージへ ---
+    # --- ステージクリア → ステージ選択画面に戻る ---
     game.start_stage(1)
     game.state = STATE_STAGE_CLEAR
     game.update_stage_clear(dt_ms=config.STAGE_CLEAR_WAIT_MS + 1)
-    assert game.state == STATE_PLAYING and game.stage.number == 2
-    print("OK: ステージ1クリアでステージ2へ")
-
-    # --- 全クリア: 最終ステージの次が無ければ ALL_CLEAR ---
-    last = stage.list_stages()[-1]
-    game.start_stage(last)
-    game.state = STATE_STAGE_CLEAR
-    game.update_stage_clear(dt_ms=config.STAGE_CLEAR_WAIT_MS + 1)
-    assert game.state == STATE_ALL_CLEAR, game.state
-    print("OK: 最終ステージクリアでALL CLEAR")
+    assert game.state == STATE_STAGE_SELECT, game.state
+    print("OK: ステージクリアで選択画面に戻る")
 
     # --- ステージ選択画面 ---
     assert stage.list_stages() == list(range(1, 11)), stage.list_stages()

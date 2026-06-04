@@ -9,7 +9,6 @@ STATE_STAGE_SELECT = "stage_select"
 STATE_PLAYING = "playing"
 STATE_GAME_OVER = "game_over"
 STATE_STAGE_CLEAR = "stage_clear"
-STATE_ALL_CLEAR = "all_clear"
 
 
 class Game:
@@ -138,10 +137,10 @@ class Game:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     return False
-                if event.key == pygame.K_r and self.state in (STATE_GAME_OVER, STATE_ALL_CLEAR):
+                if event.key == pygame.K_r and self.state == STATE_GAME_OVER:
                     self.goto_stage_select()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if self.state in (STATE_GAME_OVER, STATE_ALL_CLEAR):
+                if self.state == STATE_GAME_OVER:
                     self.goto_stage_select()
                 elif self.state == STATE_STAGE_SELECT:
                     pos = self.to_logical_pos(event.pos)
@@ -194,14 +193,11 @@ class Game:
             self.clear_timer_ms = 0.0
 
     def update_stage_clear(self, dt_ms: float) -> None:
-        """「STAGE CLEAR」表示後、次ステージへ(無ければ全クリア)"""
+        """「STAGE CLEAR」表示後、ステージ選択画面に戻る
+        (次のプレイは常に1人・パワーアップ無しから)"""
         self.clear_timer_ms += dt_ms
         if self.clear_timer_ms >= config.STAGE_CLEAR_WAIT_MS:
-            next_number = self.stage.number + 1
-            if stage.stage_exists(next_number):
-                self.start_stage(next_number)
-            else:
-                self.state = STATE_ALL_CLEAR
+            self.goto_stage_select()
 
     def resolve_bullet_hits(self) -> None:
         """弾 vs 敵・アイテムボックス(パネルは弾が素通りする)"""
@@ -267,8 +263,6 @@ class Game:
             self.draw_game_over()
         elif self.state == STATE_STAGE_CLEAR:
             self.draw_center_message(f"STAGE {self.stage.number} CLEAR!")
-        elif self.state == STATE_ALL_CLEAR:
-            self.draw_center_message("ALL CLEAR!", "クリック / Rキー でステージ選択へ")
 
     def draw_text(self, text: str, center: tuple[int, int], font=None) -> None:
         font = font or self.font
