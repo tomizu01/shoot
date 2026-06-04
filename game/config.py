@@ -65,7 +65,7 @@ ENEMY_HP = 1
 # --- 中ボス(e2)/大ボス(e3) 耐久はステージCSVで指定 ---
 ENEMY2_WIDTH = 220
 ENEMY2_SPEED = 0.035
-ENEMY3_WIDTH = 340
+ENEMY3_WIDTH = 680            # 2レーン分を占有する迫力サイズ
 ENEMY3_SPEED = 0.025
 
 # --- 当たり判定 ---
