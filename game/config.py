@@ -23,6 +23,7 @@ PLAYER_DEPTH = 0.02           # プレイヤーの立ち位置(奥行き)
 FIRE_INTERVAL_MS = 250        # 発射間隔(ミリ秒)
 SQUAD_MAX = 1000              # 味方の最大人数
 UNIT_OVERLAP = 0.6            # 横並びの詰め具合(1.0=密着、小さいほど重なる)
+SQUAD_MAX_WIDTH_RATIO = 0.25  # 部隊の最大幅(画面横幅に対する割合)。超えたら詰めて重ねる
 
 # --- 弾 ---
 BULLET_WIDTH = 26             # 手前での表示幅(px)

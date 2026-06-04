@@ -18,6 +18,16 @@ def scale(d: float) -> float:
     return corridor_width(d) / config.CORRIDOR_WIDTH_FRONT
 
 
+def depth_speed_factor(d: float) -> float:
+    """遠近感に合わせた奥行き速度の補正係数。
+
+    スプライトの見た目の大きさ(scale)に比例して画面上の移動速度を変えることで、
+    「手前に来るほど加速して見える」遠近の自然な動きになる。
+    d=0.5を基準(1.0)にしているので、奥→手前のトータル所要時間は補正前とほぼ同じ。
+    """
+    return scale(d) / scale(0.5)
+
+
 def to_screen(u: float, d: float) -> tuple[float, float]:
     """通路座標(u, d) → 画面座標(x, y)"""
     x = config.SCREEN_WIDTH / 2 + u * corridor_width(d) / 2

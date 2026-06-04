@@ -25,6 +25,17 @@ def main():
     assert game.squad.count == 1000
     print("OK: 上限1000")
 
+    # --- 部隊の幅が画面横幅の1/4以内に収まる ---
+    from game import config, projection
+    half_corridor = projection.corridor_width(config.PLAYER_DEPTH) / 2
+    for n in (9, 99, 999, 1000):
+        game.squad.set_count(n)
+        offsets_px = [u.u_offset * half_corridor for u in game.squad.units]
+        span = max(offsets_px) - min(offsets_px)
+        limit = config.SCREEN_WIDTH * config.SQUAD_MAX_WIDTH_RATIO
+        assert span <= limit + 1, (n, span, limit)
+    print("OK: 部隊幅は画面の1/4以内")
+
     # --- +n パネル取得 ---
     game.reset()
     panel = PanelAdd(u=game.squad.center_u)

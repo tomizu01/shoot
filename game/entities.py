@@ -79,8 +79,7 @@ class Squad:
             + [1] * (self.count % 10)
         )
         # 大きいユニットが中央に来るよう、中央から左右交互に詰めて配置(px単位)
-        half_corridor = projection.corridor_width(self.d) / 2
-        units: list[SquadUnit] = []
+        placements: list[tuple[int, float]] = []  # (size, center_px)
         left_px = right_px = 0.0
         for i, size in enumerate(sizes):
             w = UNIT_SPECS[size][0] * config.UNIT_OVERLAP
@@ -93,10 +92,21 @@ class Squad:
             else:
                 center_px = left_px - w / 2
                 left_px -= w
-            units.append(SquadUnit(size, center_px / half_corridor))
-        self.units = units
+            placements.append((size, center_px))
+
+        # 部隊全体の幅を画面横幅の一定割合に制限。超える場合は間隔を詰めて重ねる
+        span_px = right_px - left_px
+        max_px = config.SCREEN_WIDTH * config.SQUAD_MAX_WIDTH_RATIO
+        if span_px > max_px:
+            shrink = max_px / span_px
+            placements = [(size, px * shrink) for size, px in placements]
+
+        half_corridor = projection.corridor_width(self.d) / 2
+        self.units = [
+            SquadUnit(size, center_px / half_corridor) for size, center_px in placements
+        ]
         # 部隊全体が通路に収まるよう中心位置の可動範囲を決める
-        max_extent = max(abs(u.u_offset) for u in units)
+        max_extent = max(abs(u.u_offset) for u in self.units)
         self.center_limit = max(0.0, config.U_LIMIT - max_extent)
 
     def update(self, dt_ms: float, mouse_x: float) -> list["Bullet"]:
@@ -140,7 +150,7 @@ class Bullet(Entity):
         self.base_width = base_width
 
     def update(self, dt_ms: float) -> None:
-        self.d += config.BULLET_SPEED * dt_ms / 1000
+        self.d += config.BULLET_SPEED * projection.depth_speed_factor(self.d) * dt_ms / 1000
         if self.d >= 1.0:
             self.alive = False
 
@@ -157,7 +167,7 @@ class Enemy(Entity):
         self.hp = config.ENEMY_HP
 
     def update(self, dt_ms: float) -> None:
-        self.d -= config.ENEMY_SPEED * dt_ms / 1000
+        self.d -= config.ENEMY_SPEED * projection.depth_speed_factor(self.d) * dt_ms / 1000
 
     def reached_front(self) -> bool:
         """画面最下部(手前端)に到達したか → ゲームオーバー判定"""
@@ -179,7 +189,7 @@ class Item(Entity):
         super().__init__(u, d=1.0)
 
     def update(self, dt_ms: float) -> None:
-        self.d -= config.ITEM_SPEED * dt_ms / 1000
+        self.d -= config.ITEM_SPEED * projection.depth_speed_factor(self.d) * dt_ms / 1000
         if self.d <= 0.0:
             self.alive = False
 
