@@ -60,7 +60,7 @@ class Squad:
 
     def __init__(self):
         self.count = 1
-        self.attack_power = 1
+        self.fire_level = 1           # 連射レベル(1〜len(FIRE_INTERVAL_LEVELS))。ボックス破壊で上昇
         self.d = config.PLAYER_DEPTH
         self.center_u = 0.0
         self.fire_timer_ms = 0.0
@@ -123,19 +123,24 @@ class Squad:
         for unit in self.units:
             unit.u = self.center_u + unit.u_offset
 
+        interval = config.FIRE_INTERVAL_LEVELS[self.fire_level - 1]
         self.fire_timer_ms += dt_ms
-        if self.fire_timer_ms >= config.FIRE_INTERVAL_MS:
-            self.fire_timer_ms -= config.FIRE_INTERVAL_MS
+        if self.fire_timer_ms >= interval:
+            self.fire_timer_ms -= interval
             return [self._make_bullet(unit) for unit in self.units]
         return []
 
+    def raise_fire_level(self) -> None:
+        """連射レベルを1段階上げる(上限はFIRE_INTERVAL_LEVELSの段階数)"""
+        self.fire_level = min(self.fire_level + 1, len(config.FIRE_INTERVAL_LEVELS))
+
     def _make_bullet(self, unit: SquadUnit) -> "Bullet":
-        # グループユニットと攻撃力上昇後はパワーアップ弾(bullet2)で表現
-        powered = unit.size > 1 or self.attack_power > 1
+        # グループユニットと連射レベル上昇後はパワーアップ弾(bullet2)で表現
+        powered = unit.size > 1 or self.fire_level > 1
         return Bullet(
             u=unit.u,
             d=self.d,
-            damage=unit.size * self.attack_power,
+            damage=unit.size,
             image_key="bullet2" if powered else "bullet1",
             base_width=UNIT_SPECS[unit.size][1],
         )
@@ -270,7 +275,7 @@ class PanelMul(Item):
 
 
 class ItemBox(Item):
-    """アイテムボックス: 弾で破壊すると攻撃力+1。未破壊のまま味方に接触すると味方半減"""
+    """アイテムボックス: 弾で破壊すると連射レベル+1。未破壊のまま味方に接触すると味方半減"""
 
     image_key = "powerup3"
     base_width = config.BOX_WIDTH

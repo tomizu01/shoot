@@ -75,7 +75,7 @@ def main():
     assert game.squad.count == 50, game.squad.count
     print("OK: ボックス接触で 100 -> 50")
 
-    # --- ボックスを弾で破壊して攻撃力+1 ---
+    # --- ボックスを弾で破壊して連射レベル+1(上限あり) ---
     game.start_run(1)
     box = ItemBox(u=0.0)
     box.d = 0.5
@@ -86,8 +86,14 @@ def main():
     game.enemies = []
     game.resolve_bullet_hits()
     assert not box.alive
-    assert game.squad.attack_power == 2, game.squad.attack_power
-    print("OK: ボックス破壊で攻撃力 1 -> 2")
+    assert game.squad.fire_level == 2, game.squad.fire_level
+    print("OK: ボックス破壊で連射レベル 1 -> 2")
+
+    # --- 連射レベルは最大段階で頭打ち ---
+    for _ in range(10):
+        game.squad.raise_fire_level()
+    assert game.squad.fire_level == len(config.FIRE_INTERVAL_LEVELS), game.squad.fire_level
+    print(f"OK: 連射レベルは最大 {len(config.FIRE_INTERVAL_LEVELS)} で頭打ち")
 
     # --- 弾はパネルを素通りする ---
     panel = PanelAdd(u=0.0)

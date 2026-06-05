@@ -73,13 +73,13 @@ def main():
     assert mgr.reached_end()
     print("OK: クリア判定の進行距離")
 
-    # --- ステージ遷移: 攻撃力リセット、味方人数持ち越し ---
+    # --- ステージ遷移: 連射レベルリセット、味方人数持ち越し ---
     game = Game()
     game.squad.set_count(50)
-    game.squad.attack_power = 9
+    game.squad.fire_level = 3
     game.start_stage(1)
-    assert game.squad.count == 50 and game.squad.attack_power == 1
-    print("OK: ステージ開始で攻撃力リセット・人数持ち越し")
+    assert game.squad.count == 50 and game.squad.fire_level == 1
+    print("OK: ステージ開始で連射レベルリセット・人数持ち越し")
 
     # --- ステージクリア → ステージ選択画面に戻る ---
     game.start_stage(1)

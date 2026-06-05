@@ -74,10 +74,10 @@ class Game:
         pygame.mouse.set_visible(False)
 
     def start_stage(self, number: int) -> None:
-        """指定ステージを開始。味方人数は持ち越し、攻撃力はリセット"""
+        """指定ステージを開始。味方人数は持ち越し、連射レベルはリセット"""
         self.state = STATE_PLAYING
         self.stage = stage.StageManager(number)
-        self.squad.attack_power = 1
+        self.squad.fire_level = 1
         self.bullets: list[Bullet] = []
         self.enemies: list[Enemy] = []
         self.items: list[Item] = []
@@ -218,7 +218,7 @@ class Game:
                         if not target.alive:
                             self.score += 1
                     elif target.hit(bullet.damage):  # ItemBox 破壊
-                        self.squad.attack_power += config.BOX_ATTACK_BONUS
+                        self.squad.raise_fire_level()
                     break
 
     def resolve_item_pickups(self) -> None:
@@ -277,7 +277,7 @@ class Game:
             f"STAGE {self.stage.number}   "
             f"SCORE {self.score}   "
             f"味方 {self.squad.count}   "
-            f"攻撃力 {self.squad.attack_power}"
+            f"連射Lv {self.squad.fire_level}/{len(config.FIRE_INTERVAL_LEVELS)}"
         )
         self.draw_text(text, (config.SCREEN_WIDTH // 2, 40))
         # 性能確認用FPS(右上、HUD本体と重ならない位置)

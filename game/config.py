@@ -22,7 +22,7 @@ PLAYER_WIDTH = 100            # 1人ユニットの手前(d=0)での表示幅(px
 PLAYER_WIDTH_X10 = 135        # 10人ユニットの表示幅(少し拡大)
 PLAYER_WIDTH_X100 = 175       # 100人ユニットの表示幅(さらに拡大)
 PLAYER_DEPTH = 0.02           # プレイヤーの立ち位置(奥行き)
-FIRE_INTERVAL_MS = 250        # 発射間隔(ミリ秒)
+FIRE_INTERVAL_LEVELS = (250, 165, 110)  # 連射レベル1〜3の発射間隔(ms)。ボックス破壊でレベルアップ
 SQUAD_MAX = 1000              # 味方の最大人数
 UNIT_OVERLAP = 0.6            # 横並びの詰め具合(1.0=密着、小さいほど重なる)
 SQUAD_MAX_WIDTH_RATIO = 0.25  # 部隊の最大幅(画面横幅に対する割合)。超えたら詰めて重ねる
@@ -44,7 +44,7 @@ PANEL_MUL_MIN = 2             # ×n パネルの範囲
 PANEL_MUL_MAX = 5
 BOX_HP_MIN = 5                # ボックスの耐久範囲
 BOX_HP_MAX = 15
-BOX_ATTACK_BONUS = 1          # ボックス破壊時の攻撃力上昇
+# ボックス破壊時の効果は連射レベル+1(FIRE_INTERVAL_LEVELS参照、最大レベル=要素数)
 BOX_PENALTY_DIV = 2           # 未破壊ボックス接触時に味方が 1/n になる
 
 # --- ステージ ---
